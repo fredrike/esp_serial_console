@@ -1,8 +1,8 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+const char* ssid = "";
+const char* password = "";
 
 AsyncWebServer server(80);
 String serialBuffer = "";
@@ -81,6 +81,8 @@ inputField.addEventListener("keypress", function(e) {
 </html>
 )rawliteral";
 
+AsyncEventSource events("/serial");
+
 void setup() {
 Serial.begin(9600); // UART0, connected to PC
 WiFi.begin(ssid, password);
@@ -93,27 +95,23 @@ Serial.println();
 Serial.print("Connected! IP: ");
 Serial.println(WiFi.localIP());
 
-// Serve main page
-server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-request->send_P(200, "text/html", index_html);
-});
-
-// Server-Sent Events endpoint for serial output
-server.on("/serial", HTTP_GET, [](AsyncWebServerRequest *request){
-AsyncWebServerResponse *response = request->beginChunkedResponse("text/event-stream", [](uint8_t *buffer, size_t maxLen, size_t &outLen, void *){
-if (serialBuffer.length() > 0) {
-outLen = serialBuffer.length();
-memcpy(buffer, serialBuffer.c_str(), outLen);
-serialBuffer = "";
+// Initialize mDNS
+if (!MDNS.begin("tty-serial")) { // This will create tty-serial.local
+Serial.println("Error setting up mDNS!");
 } else {
-outLen = 0;
+Serial.println("mDNS responder started: http://tty-serial.local");
 }
-});
-response->addHeader("Cache-Control", "no-cache");
-request->send(response);
+
+server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+request->send(200, "text/html", index_html); // updated to non-deprecated send()
 });
 
-// Endpoint to send commands to serial
+// Use AsyncEventSource for SSE (recommended)
+events.onConnect([](AsyncEventSourceClient *client){
+client->send("Connected to ESP32 serial console", NULL, millis(), 1000);
+});
+server.addHandler(&events);
+
 server.on("/send", HTTP_GET, [](AsyncWebServerRequest *request){
 if (request->hasParam("cmd")) {
 String cmd = request->getParam("cmd")->value();
@@ -129,5 +127,10 @@ void loop() {
 while (Serial.available()) {
 char c = Serial.read();
 serialBuffer += c;
+}
+// Broadcast serialBuffer over SSE every loop iteration
+if (serialBuffer.length() > 0) {
+events.send(serialBuffer.c_str(), NULL, millis());
+serialBuffer = "";
 }
 }
