@@ -14,21 +14,34 @@ const char index_html[] PROGMEM = R"rawliteral(
 <html>
 <head>
 <meta charset="UTF-8">
-<title>ESP32 Serial Console</title>
+<title>ESP32 Terminal</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
 <style>
-body { background:#1e1e1e; color:#00ff00; font-family: monospace; margin:0; padding:10px; }
-#console { white-space: pre-wrap; height: 90vh; overflow-y: scroll; border: 1px solid #00ff00; padding:10px;}
+html, body { height:100%; margin:0; background:#1e1e1e; }
+#terminal { width:100%; height:100%; }
 </style>
 </head>
 <body>
-<h2>ESP32 Serial Console</h2>
-<div id="console"></div>
+<div id="terminal"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm/lib/addons/fit/fit.js"></script>
 <script>
-let consoleDiv = document.getElementById("console");
-let evtSource = new EventSource("/serial");
+const term = new Terminal({
+  convertEol: false,
+  cursorBlink: true,
+  cols: 80,
+  rows: 24,
+  theme: { background:'#1e1e1e', foreground:'#00ff00' }
+});
+term.open(document.getElementById('terminal'));
+if (term.fit) term.fit();
+
+// Connect to SSE endpoint
+const evtSource = new EventSource("/serial");
 evtSource.onmessage = function(e) {
-  consoleDiv.textContent += e.data + "\\n";
-  consoleDiv.scrollTop = consoleDiv.scrollHeight;
+  // Write each line into xterm.js
+  term.write(e.data + "\r\n");
 };
 </script>
 </body>
