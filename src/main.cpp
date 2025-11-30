@@ -1,136 +1,144 @@
+#include <Arduino.h>
 #include <WiFi.h>
+#include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
+#include <ArduinoOTA.h>
 
-const char* ssid = "";
-const char* password = "";
+#include "config.h"  // contains WIFI_SSID, WIFI_PASS, HOSTNAME, OTA_PASSWORD
 
+// HTTP/WebSocket server
 AsyncWebServer server(80);
-String serialBuffer = "";
+AsyncWebSocket ws("/ws");
 
-// HTML page with console and input
+// UART buffer
+constexpr size_t BUF_SIZE = 256;
+uint8_t buf[BUF_SIZE];
+size_t idx = 0;
+unsigned long lastFlushMs = 0;
+constexpr unsigned long FLUSH_INTERVAL = 20; // ms
+
+// Minimal HTML page with xterm.js
 const char index_html[] PROGMEM = R"rawliteral(
-
-<!DOCTYPE html>
-
+<!doctype html>
 <html>
 <head>
-  <title>ESP32 Serial Console</title>
-  <meta charset="UTF-8">
-  <style>
-    body {
-      font-family: monospace;
-      background-color: #1e1e1e;
-      color: #00ff00;
-      margin: 0;
-      padding: 20px;
-    }
-    h2 {
-      margin-top: 0;
-      text-align: center;
-    }
-    #console {
-      white-space: pre-wrap;
-      background-color: #000;
-      border: 2px solid #00ff00;
-      padding: 10px;
-      height: 400px;
-      overflow-y: scroll;
-      margin-bottom: 10px;
-    }
-    #input {
-      width: 100%;
-      padding: 10px;
-      font-family: monospace;
-      font-size: 1rem;
-      color: #00ff00;
-      background-color: #1e1e1e;
-      border: 2px solid #00ff00;
-      box-sizing: border-box;
-    }
-    #input:focus {
-      outline: none;
-      border-color: #ff0;
-    }
-  </style>
+<meta charset="utf-8" />
+<title>ESP32 Terminal</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
+<style>
+html,body{height:100%;margin:0;background:#1e1e1e}
+#terminal{width:100%;height:calc(100vh-48px)}
+#inputbox{height:48px;display:flex;gap:8px;padding:8px;background:#111}
+#cmd{flex:1;padding:8px;font-family:monospace;color:#0f0;background:#000;border:1px solid #0f0}
+#send{padding:8px 12px}
+</style>
 </head>
 <body>
-<h2>ESP32 Serial Console</h2>
-<div id="console"></div>
-<input type="text" id="input" placeholder="Type command and press Enter" autofocus>
-
+<div id="terminal"></div>
+<div id="inputbox">
+<input id="cmd" placeholder="Type command and press Enter"/>
+<button id="send">Send</button>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
 <script>
-const consoleDiv = document.getElementById('console');
-const inputField = document.getElementById('input');
+const term = new Terminal({convertEol:false,cursorBlink:true,cols:80,rows:24,theme:{background:'#1e1e1e',foreground:'#00ff00'}});
+term.open(document.getElementById('terminal'));
+if(term.fit) term.fit();
 
-let eventSource = new EventSource('/serial');
-eventSource.onmessage = function(e) {
-  consoleDiv.textContent += e.data + '\\n';
-  consoleDiv.scrollTop = consoleDiv.scrollHeight;
-};
+let ws;
+function startWS(){
+    ws = new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws');
+    ws.binaryType='arraybuffer';
+    ws.onopen=()=>{term.writeln('[WebSocket connected]');};
+    ws.onmessage=(ev)=>{
+        if(ev.data instanceof ArrayBuffer){
+            let s='';const u=new Uint8Array(ev.data);for(let i=0;i<u.length;i++) s+=String.fromCharCode(u[i]);
+            term.write(s);
+        } else {term.write(ev.data);}
+    };
+    ws.onclose=()=>{term.writeln('[WebSocket closed — reconnecting in 2s]'); setTimeout(startWS,2000);};
+    ws.onerror=(e)=>{console.error('WS error',e); try{ws.close();}catch{}};
+}
+startWS();
 
-// Send input to ESP32
-inputField.addEventListener("keypress", function(e) {
-  if(e.key === "Enter" && inputField.value.trim() !== "") {
-    fetch("/send?cmd=" + encodeURIComponent(inputField.value));
-    inputField.value = "";
-  }
-});
+function sendCmd(cmd){if(!ws||ws.readyState!==WebSocket.OPEN)return; ws.send(cmd+'\n');}
+const cmdBox=document.getElementById('cmd');
+cmdBox.addEventListener('keypress',e=>{if(e.key==='Enter'&&cmdBox.value.trim()!==''){sendCmd(cmdBox.value); cmdBox.value='';}});
+document.getElementById('send').addEventListener('click',()=>{if(cmdBox.value.trim()!==''){sendCmd(cmdBox.value); cmdBox.value='';}});
+window.addEventListener('resize',()=>{if(term.fit) term.fit();});
 </script>
-
 </body>
 </html>
 )rawliteral";
 
-AsyncEventSource events("/serial");
+// WebSocket event (browser -> UART)
+void onWsEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
+               AwsEventType type, void *arg, uint8_t *data, size_t len) {
+    if(type == WS_EVT_DATA){
+        Serial.write(data, len);
+    }
+}
+
+// Flush UART buffer to all WebSocket clients
+void flush_buffer_binary() {
+    if(idx == 0) return;
+    size_t n = ws.count();
+    for(size_t i=0;i<n;i++){
+        AsyncWebSocketClient *client = ws.client(i);
+        if(client && client->status()==WS_CONNECTED){
+            client->binary(buf, idx);
+        }
+    }
+    idx = 0;
+}
 
 void setup() {
-Serial.begin(9600); // UART0, connected to PC
-WiFi.begin(ssid, password);
-Serial.println("Connecting to WiFi...");
-while (WiFi.status() != WL_CONNECTED) {
-delay(500);
-Serial.print(".");
-}
-Serial.println();
-Serial.print("Connected! IP: ");
-Serial.println(WiFi.localIP());
+    Serial.begin(9600);
+    delay(50);
 
-// Initialize mDNS
-if (!MDNS.begin("tty-serial")) { // This will create tty-serial.local
-Serial.println("Error setting up mDNS!");
-} else {
-Serial.println("mDNS responder started: http://tty-serial.local");
-}
+    // WiFi
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(WIFI_SSID, WIFI_PASS);
+    Serial.print("[WIFI] Connecting...");
+    while(WiFi.status()!=WL_CONNECTED){delay(250); Serial.print(".");}
+    Serial.println();
+    Serial.print("[WIFI] Connected, IP=");
+    Serial.println(WiFi.localIP());
 
-server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-request->send(200, "text/html", index_html); // updated to non-deprecated send()
-});
+    // OTA
+    ArduinoOTA.setHostname(HOSTNAME);
+    if(strlen(OTA_PASSWORD)>0) ArduinoOTA.setPassword(OTA_PASSWORD);
+    ArduinoOTA.begin();
 
-// Use AsyncEventSource for SSE (recommended)
-events.onConnect([](AsyncEventSourceClient *client){
-client->send("Connected to ESP32 serial console", NULL, millis(), 1000);
-});
-server.addHandler(&events);
+    // HTTP
+    server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(200,"text/html",index_html);
+    });
 
-server.on("/send", HTTP_GET, [](AsyncWebServerRequest *request){
-if (request->hasParam("cmd")) {
-String cmd = request->getParam("cmd")->value();
-Serial.println(cmd); // send command to PC
-}
-request->send(200, "text/plain", "OK");
-});
-
-server.begin();
+    // WebSocket
+    ws.onEvent(onWsEvent);
+    server.addHandler(&ws);
+    server.begin();
+    Serial.println("[HTTP] server started");
 }
 
 void loop() {
-while (Serial.available()) {
-char c = Serial.read();
-serialBuffer += c;
-}
-// Broadcast serialBuffer over SSE every loop iteration
-if (serialBuffer.length() > 0) {
-events.send(serialBuffer.c_str(), NULL, millis());
-serialBuffer = "";
-}
+    ArduinoOTA.handle();
+
+    unsigned long now = millis();
+
+    // Read UART and accumulate into buffer
+    while(Serial.available() && idx < BUF_SIZE){
+        int v = Serial.read();
+        if(v<0) break;
+        buf[idx++] = (uint8_t)v;
+    }
+
+    // Flush buffer either when full or after FLUSH_INTERVAL
+    if(idx>0 && (idx>=BUF_SIZE || now-lastFlushMs>=FLUSH_INTERVAL)){
+        flush_buffer_binary();
+        lastFlushMs = now;
+    }
+
+    delay(1); // tiny yield
 }
