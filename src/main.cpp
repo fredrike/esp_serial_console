@@ -41,8 +41,31 @@ if (term.fit) term.fit();
 const evtSource = new EventSource("/serial");
 evtSource.onmessage = function(e) {
   // Write each line into xterm.js
-  term.write(e.data + "\r\n");
+  term.write(e.data + "\n");
 };
+
+// Handle user input
+term.onKey(e => {
+    const ev = e.domEvent;
+    let seq = e.key;
+    switch (ev.key) {
+        case "ArrowUp":    seq = "\x1b[A"; break;
+        case "ArrowDown":  seq = "\x1b[B"; break;
+        case "ArrowRight": seq = "\x1b[C"; break;
+        case "ArrowLeft":  seq = "\x1b[D"; break;
+        case "Backspace":  seq = "\x08"; break;
+        case "Enter":      seq = "\r"; break;
+        case "Tab":        seq = "\t"; break;
+        case "Home":       seq = "\x1b[H"; break;
+        case "End":        seq = "\x1b[F"; break;
+        case "PageUp":     seq = "\x1b[5~"; break;
+        case "PageDown":   seq = "\x1b[6~"; break;
+        case "Delete":     seq = "\x1b[3~"; break;
+        // optionally handle Escape sequences or function keys
+    }
+    term.write(seq); // echo locally
+    if(seq) fetch('/send?cmd='+encodeURIComponent(seq));
+});
 </script>
 </body>
 </html>
@@ -79,7 +102,7 @@ void setup() {
   server.on("/send", HTTP_GET, [](AsyncWebServerRequest *request){
     if (request->hasParam("cmd")) {
       String cmd = request->getParam("cmd")->value();
-      Serial.println(cmd); // send to PC
+      Serial.print(cmd); // send to PC
     }
     request->send(200, "text/plain", "OK");
   });
