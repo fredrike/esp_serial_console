@@ -20,7 +20,7 @@ button { padding: 10px 15px; margin-right: 5px; cursor: pointer; }
 <div class="container">
 <div id="terminal"></div>
 <div class="buttons">
-<button onclick="sendCtrlC()">Send Ctrl-C</button><button onclick="sendCtrlB()">Send Ctrl-B</button>
+<button onclick="sendCtrlC()">Send Ctrl-C</button><button onclick="sendCtrlD()">Send Ctrl-D</button>
 </div>
 </div>
 
@@ -52,9 +52,9 @@ function sendCtrlC() {
     sendCommand('\x03');
 }
 
-// Function specifically for the "Ctrl-B" button (ASCII 2, STX)
-function sendCtrlB() {
-    sendCommand('\x02');
+// Function specifically for the "Ctrl-D" button (ASCII 4, EOT)
+function sendCtrlD() {
+    sendCommand('\x04');
 }
 // Function to send the clear screen (Ctrl-L) command (ASCII 12, FF)
 function sendCtrlL() {

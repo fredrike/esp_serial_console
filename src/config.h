@@ -5,8 +5,9 @@
 #define WIFI_PASS       "YOUR_WIFI_PASSWORD"
 
 // Device settings
-#define HOSTNAME        "uart-terminal"
+#define HOSTNAME        "tty-serial"
 #define OTA_PASSWORD    ""  // Leave empty for no password
 
 // UART configuration
-#define SERIAL_BAUD     115200
+#define SERIAL_BAUD     9600
+#define MAX_READ        256  // chunk size - larger reduces sequence splitting
