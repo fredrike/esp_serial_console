@@ -237,6 +237,18 @@ esp_serial_console/
 - Check TX/RX connections
 - Ensure connected device is sending data
 
+### Multiple USB Serial Devices
+
+**If you have multiple USB serial devices** (e.g., SkyConnect ZigBee adapter) connected to the same system, you may need to change the USB device identifiers to prevent port conflicts. See [documentation/notes.md](documentation/notes.md) for detailed instructions on:
+- Programming unique USB vendor/product IDs
+- Setting up udev rules for persistent device names
+- Using Docker to program USB devices on TrueNAS
+
+## Additional Documentation
+
+- [documentation/notes.md](documentation/notes.md) - USB serial device ID configuration and troubleshooting
+- [documentation/truenas.md](documentation/truenas.md) - TrueNAS-specific network hardware fixes
+
 ## Development
 
 ### Modifying the ESPHome Component
