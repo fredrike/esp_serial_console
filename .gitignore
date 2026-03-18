@@ -9,7 +9,15 @@
 .esphome/
 secrets.yaml
 
+# Python virtual environment
+venv/
+__pycache__/
+*.pyc
+
 # Build artifacts
 *.bin
 *.elf
 *.map
+
+# Test files
+test_local.yaml

@@ -23,6 +23,43 @@ A web-based serial console for ESP32 that provides remote access to UART serial 
 
 ---
 
+## PlatformIO/Arduino Version
+
+For standalone use without Home Assistant.
+
+### Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/fredrike/esp_serial_console.git
+   cd esp_serial_console
+   ```
+
+2. **Setup virtual environment** (recommended):
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # or: source activate.sh (includes SSL fixes)
+   pip install -r requirements.txt
+   ```
+
+3. **Configure WiFi** in [src/config.h](src/config.h):
+   ```cpp
+   #define WIFI_SSID       "YOUR_WIFI_SSID"
+   #define WIFI_PASS       "YOUR_WIFI_PASSWORD"
+   #define HOSTNAME        "tty-serial"
+   #define SERIAL_BAUD     9600
+   ```
+
+4. **Build and upload**:
+   ```bash
+   source activate.sh  # Sets up environment + SSL fixes
+   pio run --target upload
+   ```
+
+**See [HOW_TO_COMPILE.md](HOW_TO_COMPILE.md) for troubleshooting.**
+
+---
+
 ## ESPHome Version (Recommended)
 
 ### Quick Start
@@ -33,7 +70,7 @@ Reference this component directly in your ESPHome YAML configuration. See [examp
 external_components:
   - source:
       type: git
-      url: git@github.com:fredrike/esp_serial_console.git
+      url: https://github.com/fredrike/esp_serial_console.git
     components: [ uart_terminal ]
 
 uart:
@@ -65,6 +102,10 @@ uart_terminal:
 
 4. **Compile and upload**:
    ```bash
+   # First time: install ESPHome if needed
+   pip install esphome
+   
+   # Compile and upload
    esphome run your_config.yaml
    ```
 
@@ -123,6 +164,16 @@ For standalone use without Home Assistant integration.
 
 3. **Build and upload** using PlatformIO:
    ```bash
+   # Add pio to PATH if needed
+   export PATH=$PATH:~/.local/bin
+   
+   # Upgrade to latest version (recommended)
+   pip install -U platformio
+   
+   # Build (auto-installs ESP32 platform on first run)
+   pio run
+   
+   # Upload
    pio run --target upload
    ```
 
@@ -246,10 +297,14 @@ esp_serial_console/
 
 ## Additional Documentation
 
-- [documentation/notes.md](documentation/notes.md) - USB serial device ID configuration and troubleshooting
-- [documentation/truenas.md](documentation/truenas.md) - TrueNAS-specific network hardware fixes
+- **[SUMMARY.md](SUMMARY.md)** - Complete setup summary with SSL fixes ⭐
+- **[SSL_FIX.md](SSL_FIX.md)** - How to fix SSL certificate issues in WSL
+- **[HOW_TO_COMPILE.md](HOW_TO_COMPILE.md)** - Comprehensive compilation guide
+- **[activate.sh](activate.sh)** - One-command environment setup script
+- **[documentation/notes.md](documentation/notes.md)** - USB serial device ID configuration
+- **[documentation/truenas.md](documentation/truenas.md)** - TrueNAS-specific fixes
 
-## Development
+## Contributing
 
 ### Modifying the ESPHome Component
 

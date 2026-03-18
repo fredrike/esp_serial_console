@@ -2,7 +2,7 @@
 #include "esphome/core/log.h"
 
 // Include shared web interface HTML
-#include "../../src/web_interface.h"
+#include "web_interface.h"
 
 namespace esphome {
 namespace uart_terminal {

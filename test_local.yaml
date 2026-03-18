@@ -1,0 +1,47 @@
+esphome:
+  name: uart-terminal-test
+
+esp32:
+  board: wemos_d1_mini32
+  framework:
+    type: arduino
+
+# Use local component for testing
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [ uart_terminal ]
+
+wifi:
+  ssid: "TestSSID"
+  password: "TestPassword"
+  
+  ap:
+    ssid: "UART Terminal Fallback"
+    password: "fallback123"
+
+captive_portal:
+
+logger:
+  level: INFO
+  baud_rate: 0
+
+api:
+  password: "test"
+
+ota:
+  platform: esphome
+  password: "test"
+
+web_server:
+  port: 80
+  
+uart:
+  id: uart_bus
+  tx_pin: GPIO1
+  rx_pin: GPIO3
+  baud_rate: 115200
+
+uart_terminal:
+  uart_id: uart_bus

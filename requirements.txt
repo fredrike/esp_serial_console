@@ -1,0 +1,12 @@
+# Python requirements for ESP Serial Console
+# Both ESPHome and PlatformIO build systems
+
+# ESPHome - Home Assistant integration
+esphome>=2024.2.0
+
+# PlatformIO - Arduino framework build system
+platformio>=6.1.0
+
+# Optional: useful development tools
+# wheel>=0.40.0
+# setuptools>=68.0.0

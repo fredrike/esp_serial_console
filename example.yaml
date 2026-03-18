@@ -3,14 +3,17 @@
 
 esphome:
   name: uart-terminal
-  platform: ESP32
+
+esp32:
   board: wemos_d1_mini32
+  framework:
+    type: arduino
 
 # Pull UART Terminal component from GitHub
 external_components:
   - source:
       type: git
-      url: git@github.com:fredrike/esp_serial_console.git
+      url: https://github.com/fredrike/esp_serial_console.git
     components: [ uart_terminal ]
 
 wifi:
