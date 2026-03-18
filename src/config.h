@@ -5,10 +5,13 @@
 #define WIFI_PASSWORD   "YOUR_WIFI_PASSWORD"
 
 // Hostname
-#define DEVICE_HOSTNAME "uart-terminal"
+#define HOSTNAME "tty-serial"
+#define OTA_PASSWORD ""         // optional
 
 // UART
-#define UART_BAUD       115200
+#define SERIAL_BAUD       9600
+
+#define MAX_READ 256           // chunk size - larger reduces sequence splitting
 
 // Web server
 #define HTTP_PORT       80

@@ -28,7 +28,7 @@ button { padding: 10px 15px; margin-right: 5px; cursor: pointer; }
 <div class="container">
 <div id="terminal"></div>
 <div class="buttons">
-<button onclick="sendCtrlC()">Send Ctrl-C</button><button onclick="sendCtrlB()">Send Ctrl-B</button>
+<button onclick="sendCtrlC()">Send Ctrl-C</button><button onclick="sendCtrlD()">Send Ctrl-D</button>
 </div>
 </div>
 
@@ -60,9 +60,9 @@ function sendCtrlC() {
     sendCommand('\x03');
 }
 
-// Function specifically for the "Ctrl-B" button (ASCII 2, STX)
-function sendCtrlB() {
-    sendCommand('\x02');
+// Function specifically for the "Ctrl-D" button (ASCII 4, EOT)
+function sendCtrlD() {
+    sendCommand('\x04');
 }
 // Function to send the clear screen (Ctrl-L) command (ASCII 12, FF)
 function sendCtrlL() {
@@ -105,13 +105,15 @@ sendCtrlL();
 </html>
 )rawliteral";
 
-void setup() {
+void setup()
+{
   Serial.begin(SERIAL_BAUD); // UART0 connected to PC
   delay(50);
 
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   Serial.print("Connecting WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
+  while (WiFi.status() != WL_CONNECTED)
+  {
     delay(500);
     Serial.print(".");
   }
@@ -121,31 +123,32 @@ void setup() {
 
   // OTA setup
   ArduinoOTA.setHostname(HOSTNAME);
-  if (strlen(OTA_PASSWORD) > 0) ArduinoOTA.setPassword(OTA_PASSWORD);
+  if (strlen(OTA_PASSWORD) > 0)
+    ArduinoOTA.setPassword(OTA_PASSWORD);
   ArduinoOTA.begin();
 
   // Serve main page
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-    request->send(200, "text/html", index_html);
-  });
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
+            { request->send(200, "text/html", index_html); });
 
   // SSE events
   server.addHandler(&events);
 
   // Optional: handle sending commands from web page
-  server.on("/send", HTTP_GET, [](AsyncWebServerRequest *request){
+  server.on("/send", HTTP_GET, [](AsyncWebServerRequest *request)
+            {
     if (request->hasParam("cmd")) {
       String cmd = request->getParam("cmd")->value();
       Serial.print(cmd); // send to PC
     }
-    request->send(200, "text/plain", "OK");
-  });
+    request->send(200, "text/plain", "OK"); });
 
   server.begin();
   Serial.println("Server started at /");
 }
 
-void loop() {
+void loop()
+{
   ArduinoOTA.handle();
 
   // Read UART and append to buffer
