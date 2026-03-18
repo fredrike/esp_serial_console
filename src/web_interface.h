@@ -1,7 +1,8 @@
 #pragma once
 
-// HTML page for the web terminal interface
-const char index_html[] PROGMEM = R"rawliteral(
+// Shared HTML page for the web terminal interface
+// Used by both PlatformIO (main.cpp) and ESPHome (uart_terminal.cpp)
+const char TERMINAL_HTML[] PROGMEM = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
@@ -10,22 +11,24 @@ const char index_html[] PROGMEM = R"rawliteral(
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css" />
 <style>
 html, body { height:100%; margin:0; background:#1e1e1e; }
-#terminal { width:100%; height:100%; }
-.container { max-width: 800px; margin: 20px; }
-.buttons { margin-bottom: 10px; }
-button { padding: 10px 15px; margin-right: 5px; cursor: pointer; }
+#terminal { width:100%; height:calc(100% - 60px); }
+.container { max-width: 100%; margin: 0; height: 100%; display: flex; flex-direction: column; }
+.buttons { padding: 10px; background: #2d2d2d; }
+button { padding: 10px 15px; margin-right: 5px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 4px; }
+button:hover { background: #45a049; }
 </style>
 </head>
 <body>
 <div class="container">
-<div id="terminal"></div>
 <div class="buttons">
-<button onclick="sendCtrlC()">Send Ctrl-C</button><button onclick="sendCtrlD()">Send Ctrl-D</button>
+<button onclick="sendCtrlC()">Send Ctrl-C</button>
+<button onclick="sendCtrlD()">Send Ctrl-D</button>
+<button onclick="sendCtrlL()">Clear Screen</button>
 </div>
+<div id="terminal"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/xterm/lib/addons/fit/fit.js"></script>
 <script>
 const term = new Terminal({
   convertEol: false,
@@ -35,30 +38,20 @@ const term = new Terminal({
   theme: { background:'#1e1e1e', foreground:'#00ff00' }
 });
 term.open(document.getElementById('terminal'));
-if (term.fit) term.fit();
 
-// Function to send command to the server and echo locally
 function sendCommand(seq) {
-    term.write(seq); // echo locally in the terminal
+    term.write(seq);
     if (seq) {
-        // This is the fetch call that connects to your backend
         fetch('/send?cmd=' + encodeURIComponent(seq))
             .catch(error => console.error('Error sending command:', error));
     }
 }
 
-// Function specifically for the "Ctrl-C" button (ASCII 3, ETX)
-function sendCtrlC() {
-    sendCommand('\x03');
-}
-
-// Function specifically for the "Ctrl-D" button (ASCII 4, EOT)
-function sendCtrlD() {
-    sendCommand('\x04');
-}
-// Function to send the clear screen (Ctrl-L) command (ASCII 12, FF)
-function sendCtrlL() {
-    sendCommand('\x0c');
+function sendCtrlC() { sendCommand('\x03'); }
+function sendCtrlD() { sendCommand('\x04'); }
+function sendCtrlL() { 
+    term.clear();
+    sendCommand('\x0c'); 
 }
   
 // Connect to SSE endpoint
@@ -96,3 +89,6 @@ sendCtrlL();
 </body>
 </html>
 )rawliteral";
+
+// Legacy alias for backward compatibility
+const char* const index_html = TERMINAL_HTML;

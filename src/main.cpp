@@ -3,15 +3,18 @@
 #include <ArduinoOTA.h>
 #include "config.h"
 #include "web_interface.h"
+#include "uart_handler.h"
 
 AsyncWebServer server(80);
 AsyncEventSource events("/serial");
+String lineBuffer = "";
 
 void setup()
 {
-  Serial.begin(SERIAL_BAUD); // UART0 connected to PC
+  Serial.begin(SERIAL_BAUD);
   delay(50);
 
+  // Connect to WiFi
   WiFi.begin(WIFI_SSID, WIFI_PASS);
   Serial.print("Connecting WiFi");
   while (WiFi.status() != WL_CONNECTED)
@@ -29,21 +32,8 @@ void setup()
     ArduinoOTA.setPassword(OTA_PASSWORD);
   ArduinoOTA.begin();
 
-  // Serve main page
-  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request)
-            { request->send(200, "text/html", index_html); });
-
-  // SSE events
-  server.addHandler(&events);
-
-  // Optional: handle sending commands from web page
-  server.on("/send", HTTP_GET, [](AsyncWebServerRequest *request)
-            {
-    if (request->hasParam("cmd")) {
-      String cmd = request->getParam("cmd")->value();
-      Serial.print(cmd); // send to PC
-    }
-    request->send(200, "text/plain", "OK"); });
+  // Setup UART server with shared function
+  setupUARTServer(server, events, Serial, TERMINAL_HTML);
 
   server.begin();
   Serial.println("Server started at /");
@@ -52,18 +42,7 @@ void setup()
 void loop()
 {
   ArduinoOTA.handle();
-
-  // Read UART and append to buffer
-  static String lineBuffer = "";
-  while (Serial.available()) {
-    char c = Serial.read();
-    if (c == '\n' || c == '\r') {
-      if (lineBuffer.length() > 0) {
-        events.send(lineBuffer.c_str());
-        lineBuffer = "";
-      }
-    } else {
-      lineBuffer += c;
-    }
-  }
+  
+  // Process UART data with shared function
+  processUARTData(Serial, events, lineBuffer);
 }
