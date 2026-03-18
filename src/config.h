@@ -1,19 +1,12 @@
 #pragma once
 
-// WiFi
+// WiFi credentials
 #define WIFI_SSID       "YOUR_WIFI_SSID"
-#define WIFI_PASSWORD   "YOUR_WIFI_PASSWORD"
+#define WIFI_PASS       "YOUR_WIFI_PASSWORD"
 
-// Hostname
-#define DEVICE_HOSTNAME "uart-terminal"
+// Device settings
+#define HOSTNAME        "uart-terminal"
+#define OTA_PASSWORD    ""  // Leave empty for no password
 
-// UART
-#define UART_BAUD       115200
-
-// Web server
-#define HTTP_PORT       80
-#define SSE_ENDPOINT    "/stream"
-
-// Buffering
-#define UART_READ_BUF   256
-#define SSE_MAX_CLIENTS 8
+// UART configuration
+#define SERIAL_BAUD     115200

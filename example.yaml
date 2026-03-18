@@ -1,0 +1,53 @@
+# Example configuration for using UART Terminal as external component
+# Copy this to your ESPHome YAML file and customize as needed
+
+esphome:
+  name: uart-terminal
+  platform: ESP32
+  board: wemos_d1_mini32
+
+# Pull UART Terminal component from GitHub
+external_components:
+  - source:
+      type: git
+      url: git@github.com:fredrike/esp_serial_console.git
+    components: [ uart_terminal ]
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  
+  # Enable fallback hotspot
+  ap:
+    ssid: "UART Terminal Fallback"
+    password: "fallback123"
+
+captive_portal:
+
+# Enable logging (disable on UART to avoid conflicts)
+logger:
+  level: INFO
+  baud_rate: 0
+
+# Enable Home Assistant API
+api:
+  password: !secret api_password
+
+# Enable OTA updates
+ota:
+  password: !secret ota_password
+
+# Web server for the terminal interface
+web_server:
+  port: 80
+
+# UART configuration - adjust pins and baud rate for your setup
+uart:
+  id: uart_bus
+  tx_pin: GPIO1   # Change to your TX pin
+  rx_pin: GPIO3   # Change to your RX pin
+  baud_rate: 115200
+
+# UART Terminal component from GitHub
+uart_terminal:
+  uart_id: uart_bus
